@@ -10,12 +10,12 @@ from ml.utils.utils import load_config
 from ml.data.tumor_dataset import TumorDataset
 from ml.training.metrics import dice_score, iou_score
 
-def train():
+def train(model_name = None):
 
     # ==================== Configuration ====================
     config = load_config("./ml/config/train.yaml")
     seed = config.get("seed", 42)
-    model_name = config.get("model", "UNet")
+    model_name = model_name if model_name is not None else config.get("model", "UNet")
     batch_size = config.get("batch_size", 8)
     epochs = config.get("epochs", 10)
     optimizer_name = config.get("optimizer", "adam")
@@ -26,14 +26,24 @@ def train():
     data_dir = config.get("data_dir", "./data/splits")
     n_class = config.get("n_class", 1)
     loss_function_name = config.get("loss_function", "BCE")
+    num_workers = config.get("num_workers", 0)
 
     # Creat output directory     
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    output_dir = Path(output_dir,model_name)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Add Seed
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+    # ==================== Device ====================
+    devices = {
+        "cpu": torch.device("cpu"),
+        "cuda": torch.device("cuda"),
+        "auto": torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    }
+    device = devices[device_mode.lower()]
 
     # ==================== Dataset ====================
     path_train_images = Path(data_dir, "train", "images")
@@ -45,16 +55,11 @@ def train():
     val_data = TumorDataset(path_val_images, path_val_masks)
 
     # ==================== DataLoader ====================
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=2, pin_memory=True)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=2, pin_memory=True)
+    pin_memory = device.type == "cuda"
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
 
-    # ==================== Device ====================
-    devices = {
-        "cpu": torch.device("cpu"),
-        "cuda": torch.device("cuda"),
-        "auto": torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    }
-    device = devices[device_mode.lower()]
+    
 
     # ==================== Model ====================
     
@@ -86,6 +91,9 @@ def train():
     }
     model = models[model_name.lower()].to(device)
 
+    if device.type == "cuda" and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
+
     # ==================== Loss ====================
     loss_functions = {
         "bce": BCEWithLogitsLoss()
@@ -97,7 +105,20 @@ def train():
         "adam": Adam(model.parameters(), lr=lr)
     }
     optimizer = optimizers[optimizer_name.lower()]
-    
+
+    # ==================== Infos =========================
+    print("=="*40)
+    print()
+    print(f"Device: {device}")
+    if device == "cuda": 
+        print(f"Using {torch.cuda.device_count()} GPUs")
+    print(f"Model: {model_name}")
+    print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
+    print(f'Number workers: {num_workers}')
+    print()
+    print("=="*40)
+    print()
+
     # ==================== Training ====================
     best_dice = 0.0
     train_losses = []
@@ -117,12 +138,12 @@ def train():
         
         progress_bar = tqdm(
             train_loader,
-            desc=f"Epoch {epoch + 1}/{epochs}"
+            desc=f"Train {epoch + 1}/{epochs}"
         )
 
         for images, masks in progress_bar: 
-            images = images.to(device)
-            masks = masks.to(device)
+            images = images.to(device, non_blocking=True)
+            masks = masks.to(device, non_blocking=True)
             optimizer.zero_grad()
 
             # Forward
@@ -158,14 +179,14 @@ def train():
 
         progress_bar = tqdm(
             val_loader,
-            desc=f"Epoch {epoch + 1}/{epochs}"
+            desc=f"Val {epoch + 1}/{epochs}"
         )
         model.eval()
 
         with torch.no_grad():
             for images, masks in progress_bar:
-                images = images.to(device)
-                masks = masks.to(device)
+                images = images.to(device, non_blocking=True)
+                masks = masks.to(device, non_blocking=True)
                 
                 # Forward
                 outputs = model(images)
@@ -186,6 +207,7 @@ def train():
         
 
         print(
+            f"[{model_name}] "
             f"Epoch {epoch + 1}/{epochs} "
             f"| Train Loss: {train_loss:.4f} "
             f"| Val Loss: {val_loss:.4f} "
@@ -197,7 +219,8 @@ def train():
         if save_best and (val_dice > best_dice) : 
             best_dice = val_dice
             torch.save(
-                model.state_dict(),
+                model.module.state_dict() if isinstance(model, torch.nn.DataParallel)
+                else model.state_dict(),
                 Path(output_dir, "best_model.pth")
             )
 
@@ -238,4 +261,6 @@ def train():
 
 
 if __name__ == "__main__" : 
-    train()
+    models = ["unet", "unet++", "deeplabv3"]
+    for model in models :
+        train(model)
