@@ -130,6 +130,7 @@ def train(model_name = None):
     val_dices = []
     train_ious = []
     val_ious = []
+    times = []
     time_total = time()
     # Training loop
     for epoch in range(epochs):
@@ -161,8 +162,9 @@ def train(model_name = None):
             train_loss += loss.item()
             train_dice += dice_score(outputs=outputs, masks=masks)
             train_iou  += iou_score(outputs=outputs, masks=masks)
-
-        train_time = time() - train_start
+        end_time = time()
+        train_time = end_time - train_start
+        all_time = end_time - time_total
         train_loss /= len(train_loader)
         train_dice /= len(train_loader)
         train_iou  /= len(train_loader)
@@ -204,7 +206,7 @@ def train(model_name = None):
             f"| Dice: {val_dice:.4f} "
             f"| IoU: {val_iou:.4f} "
             f"| Time Epoch: {train_time}s "
-            f"| All time: {time() - time_total}s"
+            f"| All time: {all_time}s"
 
         )
         # ==================== Save Best ====================
@@ -223,6 +225,7 @@ def train(model_name = None):
         val_dices.append(val_dice)
         train_ious.append(train_iou)
         val_ious.append(val_iou)
+        times.append((train_time, all_time))
 
     # ==================== Save logs ====================
     torch.save(
