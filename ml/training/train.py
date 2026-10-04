@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam
-from tqdm import tqdm
+from time import time
 import segmentation_models_pytorch as smp
 
 from ml.utils.utils import load_config
@@ -63,34 +63,37 @@ def train(model_name = None):
 
     # ==================== Model ====================
     
-    models = {
-
-        "unet": smp.Unet(
-            encoder_name="resnet34",
-            encoder_weights="imagenet",
-            in_channels=1,
-            classes=n_class,
-            activation=None
-        ),
-
-        "unet++": smp.UnetPlusPlus(
-            encoder_name="resnet34",
-            encoder_weights="imagenet",
-            in_channels=1,
-            classes=n_class,
-            activation=None
-        ),
-
-        "deeplabv3": smp.DeepLabV3(
+    if model_name.lower() == "unet":
+        model = smp.Unet(
             encoder_name="resnet34",
             encoder_weights="imagenet",
             in_channels=1,
             classes=n_class,
             activation=None
         )
-    }
-    model = models[model_name.lower()].to(device)
 
+    elif model_name.lower() == "unet++":
+        model = smp.UnetPlusPlus(
+            encoder_name="resnet34",
+            encoder_weights="imagenet",
+            in_channels=1,
+            classes=n_class,
+            activation=None
+        )
+
+    elif model_name.lower() == "deeplabv3":
+        model = smp.DeepLabV3(
+            encoder_name="resnet34",
+            encoder_weights="imagenet",
+            in_channels=1,
+            classes=n_class,
+            activation=None
+        )
+
+    else:
+        raise ValueError(f"Unknown model: {model_name}")
+
+    model = model.to(device)
     if device.type == "cuda" and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
 
@@ -110,7 +113,7 @@ def train(model_name = None):
     print("=="*40)
     print()
     print(f"Device: {device}")
-    if device == "cuda": 
+    if device.type == "cuda": 
         print(f"Using {torch.cuda.device_count()} GPUs")
     print(f"Model: {model_name}")
     print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -127,7 +130,7 @@ def train(model_name = None):
     val_dices = []
     train_ious = []
     val_ious = []
-
+    time_total = time()
     # Training loop
     for epoch in range(epochs):
         # ==================== TRAIN ====================
@@ -135,13 +138,9 @@ def train(model_name = None):
         train_loss = 0.0
         train_dice = 0.0
         train_iou = 0.0
-        
-        progress_bar = tqdm(
-            train_loader,
-            desc=f"Train {epoch + 1}/{epochs}"
-        )
+        train_start = time()
 
-        for images, masks in progress_bar: 
+        for images, masks in train_loader: 
             images = images.to(device, non_blocking=True)
             masks = masks.to(device, non_blocking=True)
             optimizer.zero_grad()
@@ -163,10 +162,7 @@ def train(model_name = None):
             train_dice += dice_score(outputs=outputs, masks=masks)
             train_iou  += iou_score(outputs=outputs, masks=masks)
 
-            progress_bar.set_postfix(
-                loss=f"{loss.item():.4f}"
-            )
-
+        train_time = time() - train_start
         train_loss /= len(train_loader)
         train_dice /= len(train_loader)
         train_iou  /= len(train_loader)
@@ -176,15 +172,11 @@ def train(model_name = None):
         val_loss = 0.0
         val_dice = 0.0
         val_iou = 0.0
-
-        progress_bar = tqdm(
-            val_loader,
-            desc=f"Val {epoch + 1}/{epochs}"
-        )
+       
         model.eval()
 
         with torch.no_grad():
-            for images, masks in progress_bar:
+            for images, masks in val_loader:
                 images = images.to(device, non_blocking=True)
                 masks = masks.to(device, non_blocking=True)
                 
@@ -197,9 +189,7 @@ def train(model_name = None):
                 val_dice += dice_score(outputs, masks)
                 val_iou += iou_score(outputs, masks)
 
-                progress_bar.set_postfix(
-                    loss=f"{loss.item():.4f}"
-                )
+               
 
         val_loss /= len(val_loader)
         val_dice /= len(val_loader)
@@ -212,7 +202,10 @@ def train(model_name = None):
             f"| Train Loss: {train_loss:.4f} "
             f"| Val Loss: {val_loss:.4f} "
             f"| Dice: {val_dice:.4f} "
-            f"| IoU: {val_iou:.4f}"
+            f"| IoU: {val_iou:.4f} "
+            f"| Time Epoch: {train_time}s "
+            f"| All time: {time() - time_total}s"
+
         )
         # ==================== Save Best ====================
 

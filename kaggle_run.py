@@ -3,7 +3,6 @@ import sys
 import subprocess
 import shutil
 
-
 REPO_URL = "https://github.com/MouaadErrougbani/brain-breast-tumor-segmentation-dl.git"
 
 SOURCE_DATA = (
@@ -24,6 +23,14 @@ subprocess.run(
     check=True
 )
 
+
+subprocess.check_call([
+    sys.executable,
+    "-m",
+    "pip",
+    "install",
+    "segmentation-models-pytorch"
+])
 
 # Check repository
 print("Repository:", REPO_DIR)
