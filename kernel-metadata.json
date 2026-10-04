@@ -1,0 +1,15 @@
+{
+  "id": "mouaaderg/brain-breast-tumor-segmentation-unet",
+  "title": "brain-breast-tumor-segmentation-unet",
+  "code_file": "kaggle_run.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": ["mouaaderg/breast-and-brain-tumor-segmentation"],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
