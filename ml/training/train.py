@@ -85,7 +85,6 @@ def train():
 
     # Training loop
     for epoch in range(epochs):
-        print("Epoch: ", epoch+1, flush=True)
         # ==================== TRAIN ====================
         model.train()
         train_loss = 0.0
