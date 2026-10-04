@@ -255,6 +255,11 @@ def train(model_name = None):
         Path(output_dir, "val_ious.pt")
     )
 
+    torch.save(
+            times,
+            Path(output_dir, "times.pt")
+        )
+
 
 if __name__ == "__main__" : 
     models = ["unet", "unet++", "deeplabv3"]
