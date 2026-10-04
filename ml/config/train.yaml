@@ -1,0 +1,12 @@
+seed: 42
+model: UNet              # UNet, UNet++, Deeplapv3
+batch_size: 2
+epochs: 10
+optimizer: Adam          # Adam
+learning_rate: 0.0001
+device: auto             # auto, cuda, cpu
+save_best: true          
+output_dir: ./output
+data_dir: ./data/splits  # Expected structure: train/{images,masks}, val/{images,masks}, test/{images,masks}.
+n_class: 1
+loss_function: BCE       # BCE, BCE+Dice 
