@@ -5,10 +5,12 @@ from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam
 from time import time
 import segmentation_models_pytorch as smp
+import random, numpy as np
 
 from ml.utils.utils import load_config
 from ml.data.tumor_dataset import TumorDataset
 from ml.training.metrics import dice_score, iou_score
+
 
 def train(model_name = None):
 
@@ -31,6 +33,7 @@ def train(model_name = None):
     # Creat output directory     
     output_dir = Path(output_dir,model_name)
     output_dir.mkdir(parents=True, exist_ok=True)
+    random.seed(seed); np.random.seed(seed)
 
     # Add Seed
     torch.manual_seed(seed)
@@ -51,8 +54,8 @@ def train(model_name = None):
     path_val_images = Path(data_dir, "val", "images")
     path_val_masks = Path(data_dir, "val", "masks")
 
-    train_data = TumorDataset(path_train_images, path_train_masks)
-    val_data = TumorDataset(path_val_images, path_val_masks)
+    train_data = TumorDataset(path_train_images, path_train_masks, apply_transform=True)
+    val_data = TumorDataset(path_val_images, path_val_masks, apply_transform=False)
 
     # ==================== DataLoader ====================
     pin_memory = device.type == "cuda"
@@ -98,16 +101,22 @@ def train(model_name = None):
         model = torch.nn.DataParallel(model)
 
     # ==================== Loss ====================
+
+    dice_loss = smp.losses.DiceLoss(mode="binary")
+    bce = BCEWithLogitsLoss()
+  
     loss_functions = {
-        "bce": BCEWithLogitsLoss()
+        "bce": bce,
+        "bce+dice": lambda out, m: bce(out, m) + dice_loss(out, m)
     }
     criterion = loss_functions[loss_function_name.lower()]
 
     # ==================== Optimizer ====================
     optimizers = {
-        "adam": Adam(model.parameters(), lr=lr)
+        "adam": Adam(model.parameters(), lr=lr, weight_decay=1e-4)
     }
     optimizer = optimizers[optimizer_name.lower()]
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=3)
 
     # ==================== Infos =========================
     print("=="*40)
@@ -192,10 +201,10 @@ def train(model_name = None):
                 val_iou += iou_score(outputs, masks)
 
                
-
         val_loss /= len(val_loader)
         val_dice /= len(val_loader)
         val_iou /= len(val_loader)
+        scheduler.step(val_dice)
         
 
         print(

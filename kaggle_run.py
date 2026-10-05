@@ -55,4 +55,17 @@ os.chdir(REPO_DIR)
 # Train
 from ml.training.train import train
 
-train()
+models = ["unet", "unet++", "deeplabv3"]
+for model in models:
+    train(model)
+
+# Save results, then clean up
+os.chdir(WORK_DIR)   # sortir du repo AVANT de le supprimer
+
+dest_output = os.path.join(WORK_DIR, "output")
+if os.path.exists(dest_output):
+    shutil.rmtree(dest_output)
+shutil.move(os.path.join(REPO_DIR, "output"), dest_output)
+
+shutil.rmtree(REPO_DIR)   # supprime repo + data copiée
+

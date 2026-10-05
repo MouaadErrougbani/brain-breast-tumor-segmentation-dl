@@ -9,5 +9,5 @@ save_best: true
 output_dir: ./output
 data_dir: ./data/splits  # Expected structure: train/{images,masks}, val/{images,masks}, test/{images,masks}.
 n_class: 1
-loss_function: BCE       # BCE, BCE+Dice 
+loss_function: BCE+Dice  # BCE, BCE+Dice 
 num_workers: 2
