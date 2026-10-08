@@ -1,6 +1,5 @@
 from pathlib import Path
 import numpy as np
-import torch
 from PIL import Image
 from torch.utils.data import Dataset
 import albumentations as A
@@ -8,12 +7,15 @@ from albumentations.pytorch import ToTensorV2
 
 
 class TumorDataset(Dataset):
-    def __init__(self, images_dir, masks_dir, apply_transform=True):
+    def __init__(self, images_dir, masks_dir, apply_transform=True, normalize=True):
         self.images_dir = Path(images_dir)
         self.masks_dir = Path(masks_dir)
         self.images = sorted(self.images_dir.glob("*.png"))
 
-        normalize = [A.Normalize(mean=(0.5,), std=(0.5,)), ToTensorV2()]
+        if normalize:
+            end_ops = [A.Normalize(mean=(0.5,), std=(0.5,)), ToTensorV2()]   # [-1, 1]
+        else:
+            end_ops = [A.ToFloat(max_value=255.0), ToTensorV2()]             # [0, 1]
 
         if apply_transform:
             self.transform = A.Compose([
@@ -26,10 +28,10 @@ class TumorDataset(Dataset):
                 A.RandomBrightnessContrast(0.2, 0.2, p=0.5),
                 A.GaussianBlur(blur_limit=(3, 7), p=0.3),
                 A.GaussNoise(p=0.3),
-                *normalize,
+                *end_ops,
             ])
         else:
-            self.transform = A.Compose(normalize)
+            self.transform = A.Compose(end_ops)
 
     def __len__(self):
         return len(self.images)
@@ -43,6 +45,4 @@ class TumorDataset(Dataset):
         mask = (mask > 127).astype(np.float32)
 
         out = self.transform(image=image, mask=mask)
-        image = out["image"]                 # [1, H, W]
-        mask = out["mask"].unsqueeze(0)      # [1, H, W]
-        return image, mask.float()
+        return out["image"], out["mask"].unsqueeze(0).float()

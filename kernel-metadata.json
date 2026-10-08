@@ -1,6 +1,6 @@
 {
-  "id": "mouaaderg/brain-breast-tumor-segmentation-unet",
-  "title": "brain-breast-tumor-segmentation-unet",
+  "id": "mouaaderg/brain-breast-tumor-segmentation-improved",
+  "title": "brain-breast-tumor-segmentation-improved",
   "code_file": "kaggle_run.py",
   "language": "python",
   "kernel_type": "script",
