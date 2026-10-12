@@ -9,9 +9,9 @@ from PIL import Image, UnidentifiedImageError
 from fastapi.middleware.cors import CORSMiddleware
 import base64
 
-from backend.predict import build_model, preprocessing, predict, SIZE
+from predict import build_model, preprocessing, predict, SIZE
 
-MODELS_PATH = "./output/improved"
+MODELS_PATH = "./models"
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_TYPES = {"image/png", "image/jpeg"}
 MODEL_NAMES = ["unet", "unet++", "deeplabv3"]

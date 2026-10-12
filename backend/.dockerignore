@@ -1,0 +1,34 @@
+# Environnement Python
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+
+# Git et IDE
+.git
+.gitignore
+.vscode
+.idea
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Notebooks et données (inutiles dans l'image)
+*.ipynb
+.ipynb_checkpoints
+data
+datasets
+*.zip
+
+# Modèles : montés par volume, pas copiés dans l'image
+models
+*.pth
+*.pt
+
+# Fichiers d'environnement (secrets)
+.env
+.env.*

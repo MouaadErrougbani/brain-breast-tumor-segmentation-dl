@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    image: backend-tumor
+    container_name: backend-tumor
+    restart: unless-stopped
+
+    expose:
+      - "8000"
+    volumes:
+      - ./backend/models:/app/models:ro
+    networks:
+      - tumor-private
+
+  frontend:
+    build:
+      context: ./frontend
+    image: frontend-tumor
+    container_name: frontend-tumor
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "80"
+    networks:
+      - tumor-private
+      - tumor-public
+networks:
+  tumor-public:
+    external: true
+  
+  tumor-private:
+    external: true
