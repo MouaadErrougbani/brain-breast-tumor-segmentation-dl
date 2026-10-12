@@ -46,6 +46,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://10.0.0.93:3000",
+        "https://frontend-tumor:80",
+        "http://frontend-tumor:80",
     ],
     allow_credentials=True,
     allow_methods=["*"],
