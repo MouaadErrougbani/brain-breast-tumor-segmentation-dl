@@ -18,7 +18,7 @@ function App() {
         formData.append("file", file);
 
         const response = await fetch(
-          "http://backend-tumor:8000/segment",
+          "/tumor-api/segment",
           {
             method: "POST",
             body: formData,
